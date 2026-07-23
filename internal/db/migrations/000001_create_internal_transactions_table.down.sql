@@ -1,0 +1,1 @@
+drop table internal_transaction;
