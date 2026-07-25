@@ -11,6 +11,7 @@ type CreateTransactionRequest struct{
 	 OrderID       int     `json:"order_id"`
     Amount        float64 `json:"amount"`
     ModeOfPayment string  `json:"mode_of_payment"`
+
 }
 
 
@@ -27,7 +28,7 @@ func (h *Handler) CreateTransaction(c *gin.Context) {
 	}
 	var newID int
 	err=h.Pool.QueryRow(context.Background(),
-    "INSERT INTO internal_transaction (order_id,amount, mode_of_payment) VALUES ($1, $2, $3) RETURNING id", req.OrderID,req.Amount,req.ModeOfPayment).Scan(&newID)
+    "INSERT INTO internal_transaction (order_id,amount, mode_of_payment, status_of_payment) VALUES ($1, $2, $3, $4) RETURNING id", req.OrderID,req.Amount,req.ModeOfPayment, "pending").Scan(&newID)
 	if err!=nil{
 		c.JSON(500,gin.H{"error":err.Error()})
 		return
