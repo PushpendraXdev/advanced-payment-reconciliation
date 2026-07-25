@@ -1,0 +1,1 @@
+ALTER TABLE internal_transaction ALTER COLUMN status_of_payment DROP DEFAULT;

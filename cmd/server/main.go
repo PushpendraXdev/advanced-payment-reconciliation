@@ -20,9 +20,11 @@ func main() {
 	}
 	defer pool.Close()
 	r := gin.Default()
+
 	r.GET("/health", func(ctx *gin.Context) { ctx.JSON(200, "welcome to project") })
 	 handler := &gateway.Handler{Pool: pool}
    r.POST("/transactions/internal", handler.CreateTransaction)
+   r.GET("/transactions",handler.ListTransactions)
    
 	r.Run(":8080")
   
