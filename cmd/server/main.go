@@ -25,7 +25,7 @@ func main() {
 	 handler := &gateway.Handler{Pool: pool}
    r.POST("/transactions/internal", handler.CreateTransaction)
    r.GET("/transactions",handler.ListTransactions)
-   
+r.POST("/gateway/webhook", handler.HandleWebhook)   
 	r.Run(":8080")
   
 }

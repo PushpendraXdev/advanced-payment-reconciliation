@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -67,3 +68,33 @@ func (h *Handler) ListTransactions(c *gin.Context){
 	  }
 	  c.JSON(200, listcount)
 	}
+	type GatewayTransactionRequest struct{
+    PaymentID     string  `json:"payment_id"`
+    UserID        int     `json:"user_id"`
+    Amount        float64 `json:"amount"`
+    UTR           string  `json:"utr"`
+    ModeOfPayment string  `json:"mode_of_payment"`
+    GatewayName   string  `json:"gateway_name"`
+}
+func (h *Handler) HandleWebhook(c *gin.Context){
+    var gtr GatewayTransactionRequest
+	err:=c.ShouldBindJSON(&gtr)
+	if err!=nil{
+		c.JSON(400,gin.H{"error":err.Error()})
+		return
+	}
+
+    var newId int
+	err=h.Pool.QueryRow(context.Background(),"INSERT INTO gateway_transactions (payment_id, user_id,amount, utr, mode_of_payment,gateway_name) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",gtr.PaymentID,gtr.UserID,gtr.Amount,gtr.UTR,gtr.ModeOfPayment,gtr.GatewayName).Scan(&newId)
+if err!=nil{
+        if strings.Contains(err.Error(),"duplicate key"){
+			c.JSON(200,gin.H{"already processed":"skipping"})
+			return
+		}
+		c.JSON(500,gin.H{"error":err.Error()})
+		return
+}
+c.JSON(201,gin.H{"id":newId,"message":"gateway transaction recorded"})
+
+
+}
