@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/PushpendraXdev/advanced-payment-reconciliation/internal/db"
 	"github.com/PushpendraXdev/advanced-payment-reconciliation/internal/gateway"
@@ -29,7 +31,19 @@ func main() {
 	r.POST("/gateway/webhook", handler.HandleWebhook)
 	matcher := &matcher.Matcher{Pool: pool}
 	r.POST("/reconcile/run", matcher.ReconcileHandler)
+    
+	go func() {
+		timer:=time.NewTicker(30*time.Second)
+		for{
+			<-timer.C
+		err:=matcher.RunReconciliation(context.Background())
+		if err!=nil{
+			log.Println("reconcile automate error:",err)
+		
+		}
+	}
 
+	}()
 	r.Run(":8080")
 
 }
