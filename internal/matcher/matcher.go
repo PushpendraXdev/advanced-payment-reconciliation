@@ -2,6 +2,8 @@ package matcher
 
 import (
 	"context"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,7 +23,6 @@ type MatchResult struct {
 	InternalID int
 	GatewayID  int
 }
-
 
 func MatchTransactions(internalTxns []InternalTxn, gatewayTxns []GatewayTxn) []MatchResult {
 	var results []MatchResult
@@ -52,22 +53,26 @@ type Matcher struct {
 }
 
 func (m *Matcher) RunReconciliation(ctx context.Context) error {
-    internalTxn,err:=m.FetchPendingInternal(ctx)
-	if err!=nil{
+	internalTxn, err := m.FetchPendingInternal(ctx)
+	if err != nil {
 		return err
 	}
-	gatewayTxn,err:=m.FetchUnlinkedGateway(ctx)
-	if err!=nil{
+	gatewayTxn, err := m.FetchUnlinkedGateway(ctx)
+	if err != nil {
 		return err
 	}
-	results:=MatchTransactions(internalTxn,gatewayTxn)
-	for _,r:=range results{
-		_,err:=m.Pool.Exec(ctx,"UPDATE internal_transaction SET status_of_payment='matched' WHERE id=$1",r.InternalID)
-		if err!=nil{
+	results := MatchTransactions(internalTxn, gatewayTxn)
+	for _, r := range results {
+		_, err := m.Pool.Exec(ctx, "UPDATE internal_transaction SET status_of_payment='pending_approval' WHERE id=$1", r.InternalID)
+		if err != nil {
 			return err
 		}
-		_,err=m.Pool.Exec(ctx,"UPDATE gateway_transactions SET internal_transaction_id=$1 WHERE id=$2",r.InternalID,r.GatewayID)
-		if err!=nil{
+		_, err = m.Pool.Exec(ctx, "UPDATE gateway_transactions SET internal_transaction_id=$1 WHERE id=$2", r.InternalID, r.GatewayID)
+		if err != nil {
+			return err
+		}
+		_, err = m.Pool.Exec(ctx, "INSERT INTO matches (internal_transaction_id, gateway_transaction_id) VALUES ($1, $2)", r.InternalID, r.GatewayID)
+		if err != nil {
 			return err
 		}
 	}
@@ -110,11 +115,67 @@ func (m *Matcher) FetchUnlinkedGateway(ctx context.Context) ([]GatewayTxn, error
 	return listcount, nil
 }
 
-func (m *Matcher) ReconcileHandler(c *gin.Context){
-    err:=m.RunReconciliation(c.Request.Context())
+func (m *Matcher) ReconcileHandler(c *gin.Context) {
+	err := m.RunReconciliation(c.Request.Context())
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "reconcile success"})
+}
+type PendingApproval struct{
+	Id int
+	InternalTxnId int
+	GatewayTxnId int
+	MatchedAt time.Time
+}
+
+func (m *Matcher) ListPendngApprovals (c *gin.Context){
+	rows,err:=m.Pool.Query(c.Request.Context(),"SELECT id,internal_transaction_id,gateway_transaction_id,matched_at FROM matches WHERE status ='pending_approval'")
 	if err!=nil{
 		c.JSON(500,gin.H{"error":err.Error()})
-	    return
+		return
 	}
-	c.JSON(200,gin.H{"message":"reconcile success"})
+	defer rows.Close()
+	var list []PendingApproval
+	for rows.Next(){
+		var pm PendingApproval
+		err=rows.Scan(&pm.Id,&pm.InternalTxnId,&pm.GatewayTxnId,&pm.MatchedAt)
+		if err!=nil{
+                 c.JSON(500,gin.H{"error":err.Error()})
+				 return
+		}
+		list = append(list, pm)
+	}
+	c.JSON(200,list)
+}
+
+func (m *Matcher) ApproveMatch(c *gin.Context) {
+    idParam := c.Param("id")
+    matchID, err := strconv.Atoi(idParam)
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid match id"})
+        return
+    }
+
+    var internalID int
+    err = m.Pool.QueryRow(c.Request.Context(), "SELECT internal_transaction_id FROM matches WHERE id=$1", matchID).Scan(&internalID)
+    if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+
+    _, err = m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='approved', approved_at=NOW() WHERE id=$1", matchID)
+    if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+
+    _, err = m.Pool.Exec(c.Request.Context(), "UPDATE internal_transaction SET status_of_payment='matched' WHERE id=$1", internalID)
+    if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+
+    c.JSON(200, gin.H{"message": "match approved"})
 }
