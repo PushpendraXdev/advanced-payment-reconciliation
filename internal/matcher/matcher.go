@@ -123,59 +123,111 @@ func (m *Matcher) ReconcileHandler(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"message": "reconcile success"})
 }
-type PendingApproval struct{
-	Id int
-	InternalTxnId int
-	GatewayTxnId int
-	MatchedAt time.Time
+
+type PendingApproval struct {
+	Id            int       `json:"id"`
+	InternalTxnId int       `json:"internal_transaction_id"`
+	GatewayTxnId  int       `json:"gateway_transaction_id"`
+	MatchedAt     time.Time `json:"matched_at"`
 }
 
-func (m *Matcher) ListPendngApprovals (c *gin.Context){
-	rows,err:=m.Pool.Query(c.Request.Context(),"SELECT id,internal_transaction_id,gateway_transaction_id,matched_at FROM matches WHERE status ='pending_approval'")
-	if err!=nil{
-		c.JSON(500,gin.H{"error":err.Error()})
+func (m *Matcher) ListPendngApprovals(c *gin.Context) {
+	rows, err := m.Pool.Query(c.Request.Context(), "SELECT id,internal_transaction_id,gateway_transaction_id,matched_at FROM matches WHERE status ='pending_approval'")
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	defer rows.Close()
 	var list []PendingApproval
-	for rows.Next(){
+	for rows.Next() {
 		var pm PendingApproval
-		err=rows.Scan(&pm.Id,&pm.InternalTxnId,&pm.GatewayTxnId,&pm.MatchedAt)
-		if err!=nil{
-                 c.JSON(500,gin.H{"error":err.Error()})
-				 return
+		err = rows.Scan(&pm.Id, &pm.InternalTxnId, &pm.GatewayTxnId, &pm.MatchedAt)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
 		}
 		list = append(list, pm)
 	}
-	c.JSON(200,list)
+	c.JSON(200, list)
 }
 
 func (m *Matcher) ApproveMatch(c *gin.Context) {
-    idParam := c.Param("id")
-    matchID, err := strconv.Atoi(idParam)
-    if err != nil {
-        c.JSON(400, gin.H{"error": "invalid match id"})
-        return
-    }
+	idParam := c.Param("id")
+	matchID, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid match id"})
+		return
+	}
 
-    var internalID int
-    err = m.Pool.QueryRow(c.Request.Context(), "SELECT internal_transaction_id FROM matches WHERE id=$1", matchID).Scan(&internalID)
-    if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
-        return
-    }
+	var internalID int
+	err = m.Pool.QueryRow(c.Request.Context(), "SELECT internal_transaction_id FROM matches WHERE id=$1", matchID).Scan(&internalID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 
-    _, err = m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='approved', approved_at=NOW() WHERE id=$1", matchID)
-    if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
-        return
-    }
+	_, err = m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='approved', approved_at=NOW() WHERE id=$1", matchID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 
-    _, err = m.Pool.Exec(c.Request.Context(), "UPDATE internal_transaction SET status_of_payment='matched' WHERE id=$1", internalID)
-    if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
-        return
-    }
+	_, err = m.Pool.Exec(c.Request.Context(), "UPDATE internal_transaction SET status_of_payment='matched' WHERE id=$1", internalID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 
-    c.JSON(200, gin.H{"message": "match approved"})
+	c.JSON(200, gin.H{"message": "match approved"})
+}
+
+func (m *Matcher) ApproveBatch(c *gin.Context) {
+	_, err := m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='approved', approved_at=NOW() WHERE status='pending_approval'")
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	_, err = m.Pool.Exec(c.Request.Context(), "UPDATE internal_transaction SET status_of_payment='matched' WHERE id IN (SELECT internal_transaction_id FROM matches WHERE status='approved')")
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "batch approved"})
+}
+
+func (m *Matcher) RejectMatch(c *gin.Context) {
+	idParam := c.Param("id")
+	matchId, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	var internalId int
+	var gatewayId int
+	err = m.Pool.QueryRow(c.Request.Context(), "SELECT internal_transaction_id, gateway_transaction_id FROM matches WHERE id=$1", matchId).Scan(&internalId, &gatewayId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='rejected' WHERE id=$1", matchId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = m.Pool.Exec(c.Request.Context(), "UPDATE internal_transaction SET status_of_payment='pending' WHERE id=$1", internalId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = m.Pool.Exec(c.Request.Context(), "UPDATE gateway_transactions SET internal_transaction_id=NULL WHERE id=$1", gatewayId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "reject match done"})
 }
