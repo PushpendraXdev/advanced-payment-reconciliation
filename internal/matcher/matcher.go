@@ -71,7 +71,14 @@ func (m *Matcher) RunReconciliation(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		_, err = m.Pool.Exec(ctx, "INSERT INTO matches (internal_transaction_id, gateway_transaction_id) VALUES ($1, $2)", r.InternalID, r.GatewayID)
+		
+		var matchID int
+		err = m.Pool.QueryRow(ctx, "INSERT INTO matches (internal_transaction_id, gateway_transaction_id) VALUES ($1, $2) RETURNING id", r.InternalID, r.GatewayID).Scan(&matchID)
+		if err != nil {
+			return err
+		}
+
+		_, err = m.Pool.Exec(ctx, "INSERT INTO audit_logs (matched_id, internal_transaction_id, gateway_transaction_id, action, status) VALUES ($1, $2, $3, $4, $5)", matchID, r.InternalID, r.GatewayID, "matched", "pending_approval")
 		if err != nil {
 			return err
 		}
