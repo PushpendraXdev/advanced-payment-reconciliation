@@ -282,7 +282,20 @@ func (m *Matcher) ReconciliationSummary (c *gin.Context){
 	}
 	dashboard_data=append(dashboard_data, dash_row)
 	}
-	c.JSON(200,dashboard_data)
+	var matched,total int 
+	for _,row :=range dashboard_data{
+	    total+=row.Count
+		if(row.Status=="matched"){
+			matched+=row.Count
+		}	
+
+	}
+	var matchrate float64
+    if total>0{
+	matchrate=(float64(matched)*100)/float64(total)
+	}
+	c.JSON(200,gin.H{
+		"summary":dashboard_data,"matched":matched,"total":total,"matchrate":matchrate})
 }
 
 
