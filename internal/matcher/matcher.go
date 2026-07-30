@@ -2,6 +2,7 @@ package matcher
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -194,8 +195,16 @@ func (m *Matcher) ApproveMatch(c *gin.Context) {
     c.JSON(200, gin.H{"message": "match approved"})
 }
 func (m *Matcher) ApproveBatch(c *gin.Context) {
-	_, err := m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='approved', approved_at=NOW() WHERE status='pending_approval'")
+     change_data, err := m.Pool.Exec(c.Request.Context(), "UPDATE matches SET status='approved', approved_at=NOW() WHERE status='pending_approval'")
 	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	counnt:=change_data.RowsAffected()
+	updated_string_data:=fmt.Sprintf("Batch Approve data %d",counnt)
+	
+	_,err=m.Pool.Exec(c.Request.Context(),"INSERT INTO audit_logs (action,status,details) VALUES ($1,$2,$3)","batch_approved","approved",updated_string_data)
+	if err!=nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -240,6 +249,10 @@ func (m *Matcher) RejectMatch(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-
+	_,err=m.Pool.Exec(c.Request.Context(),"INSERT INTO audit_logs (matched_id, internal_transaction_id, gateway_transaction_id, action, status) VALUES ($1,$2,$3,$4,$5)",matchId,internalId,gatewayId,"rejected","rejected")
+    if err !=nil{
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(200, gin.H{"message": "reject match done"})
 }
