@@ -256,3 +256,35 @@ func (m *Matcher) RejectMatch(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"message": "reject match done"})
 }
+
+
+// =============================================================== admin dashboard
+
+type StatusCount struct{
+        Status string `json:"status"`
+		Count int        `json:"count"`
+}
+
+func (m *Matcher) ReconciliationSummary (c *gin.Context){
+	rows,err:=m.Pool.Query(c.Request.Context(),"SELECT status_of_payment, COUNT(*) FROM internal_transaction GROUP BY status_of_payment")
+	if err!=nil{
+		c.JSON(500,gin.H{"error":err.Error()})
+		return
+	}
+	defer rows.Close()
+    var dashboard_data []StatusCount
+	for rows.Next(){
+        var dash_row StatusCount
+		err= rows.Scan(&dash_row.Status,&dash_row.Count);
+		if err!=nil{
+		c.JSON(500,gin.H{"error":err.Error()})
+		return
+	}
+	dashboard_data=append(dashboard_data, dash_row)
+	}
+	c.JSON(200,dashboard_data)
+}
+
+
+
+

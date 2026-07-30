@@ -48,6 +48,7 @@ func main() {
 	 r.POST("/matches/:id/approve",matcher.ApproveMatch)
 	 r.POST("/matches/approve-batch",matcher.ApproveBatch)
 	 r.POST("/matches/:id/reject",matcher.RejectMatch)
+	 r.GET("/reports/summary",matcher.ReconciliationSummary)
 	r.Run(":8080")
 
 }
