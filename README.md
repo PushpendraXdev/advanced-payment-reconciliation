@@ -28,33 +28,33 @@ This project simulates that entire pipeline — ingestion, automated matching, h
 
 ```mermaid
 flowchart TB
-    subgraph Sources["📥 Data Sources"]
+    subgraph Sources["Data Sources"]
         A[Internal Order System]
         B[Payment Gateway Webhook]
     end
 
     subgraph Ingestion["Ingestion Layer"]
         C[POST /transactions/internal]
-        D[POST /gateway/webhook<br/><i>idempotency-protected</i>]
+        D["POST /gateway/webhook<br/>idempotency-protected"]
     end
 
-    subgraph Engine["⚙️ Automated Matching Engine"]
-        E[Scheduled Background Worker<br/><i>goroutine + ticker, runs every 30s</i>]
-        F[Hash-Map Matcher<br/><i>O(n+m) amount-based matching</i>]
+    subgraph Engine["Automated Matching Engine"]
+        E["Scheduled Background Worker<br/>goroutine + ticker, every 30s"]
+        F["Hash-Map Matcher<br/>O(n+m) amount-based matching"]
     end
 
-    subgraph Approval["🧑‍💼 Human Approval Gate"]
+    subgraph Approval["Human Approval Gate"]
         G{pending_approval queue}
-        H[Approve<br/>single or batch]
-        I[Reject<br/>unlinks both sides]
+        H["Approve<br/>single or batch"]
+        I["Reject<br/>unlinks both sides"]
     end
 
-    subgraph Records["📜 Records"]
+    subgraph Records["Records"]
         J[(matches)]
         K[(audit_logs)]
     end
 
-    L[✅ matched]
+    L[matched]
 
     A --> C --> J
     B --> D --> J
@@ -236,8 +236,8 @@ This gives **O(n + m)** matching instead of an **O(n × m)** nested-loop compari
 ```mermaid
 flowchart LR
     A[Match Found] -->|Automated| B[pending_approval]
-    B -->|Human clicks Approve| C[✅ matched / ledger-ready]
-    B -->|Human clicks Reject| D[🔄 unlinked, back to pending]
+    B -->|Human clicks Approve| C["matched, ledger-ready"]
+    B -->|Human clicks Reject| D["unlinked, back to pending"]
 
     style A fill:#0f3460,color:#fff
     style B fill:#533483,color:#fff
