@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   app:
     build: .
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgres://postgres:Pushpendra1915@db:5432/reconciliation_db?sslmode=disable
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD}@db:5432/reconciliation_db?sslmode=disable
     depends_on:
       - db
 
@@ -14,7 +12,7 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Pushpendra1915
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: reconciliation_db
     ports:
       - "5432:5432"
