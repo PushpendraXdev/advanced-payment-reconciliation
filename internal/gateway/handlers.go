@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 type CreateTransactionRequest struct{
 	 OrderID       int     `json:"order_id"`
@@ -18,6 +19,7 @@ type CreateTransactionRequest struct{
 
 type Handler struct {
     Pool *pgxpool.Pool
+	Redis *redis.Client
 }
 
 func (h *Handler) CreateTransaction(c *gin.Context) {
@@ -83,7 +85,15 @@ func (h *Handler) HandleWebhook(c *gin.Context){
 		c.JSON(400,gin.H{"error":err.Error()})
 		return
 	}
-
+	exists,err:=h.Redis.Exists(c.Request.Context(),"idempotence:"+gtr.PaymentID).Result()
+	if err!=nil{
+	c.JSON(500,gin.H{"err":err.Error()})
+	return
+	}
+	if exists>0{
+		c.JSON(200,gin.H{"message":"already processed skipping"})
+		return
+	}
     var newId int
 	err=h.Pool.QueryRow(context.Background(),"INSERT INTO gateway_transactions (payment_id, user_id,amount, utr, mode_of_payment,gateway_name) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",gtr.PaymentID,gtr.UserID,gtr.Amount,gtr.UTR,gtr.ModeOfPayment,gtr.GatewayName).Scan(&newId)
 if err!=nil{
@@ -94,7 +104,9 @@ if err!=nil{
 		c.JSON(500,gin.H{"error":err.Error()})
 		return
 }
+h.Redis.Set(c.Request.Context(),"idempotence:"+gtr.PaymentID ,"1",24*time.Hour)
 c.JSON(201,gin.H{"id":newId,"message":"gateway transaction recorded"})
 
 
 }
+

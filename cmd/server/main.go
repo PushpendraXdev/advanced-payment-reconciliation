@@ -15,7 +15,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-    log.Println("No .env file found, using system environment variables")
+		log.Println("No .env file found, using system environment variables")
 	}
 	pool, err := db.NewPool()
 	if err != nil {
@@ -24,31 +24,34 @@ func main() {
 	defer pool.Close()
 	r := gin.Default()
 
-	r.GET("/health", func(ctx* gin.Context) { ctx.JSON(200, "welcome to project") })
-	handler := &gateway.Handler{Pool: pool}
+	r.GET("/health", func(ctx *gin.Context) { ctx.JSON(200, "welcome to project") })
+	redisClient := db.NewRedisClient()
+	handler := &gateway.Handler{Pool: pool, Redis: redisClient}
 	r.POST("/transactions/internal", handler.CreateTransaction)
 	r.GET("/transactions", handler.ListTransactions)
 	r.POST("/gateway/webhook", handler.HandleWebhook)
 	matcher := &matcher.Matcher{Pool: pool}
 	r.POST("/reconcile/run", matcher.ReconcileHandler)
-    
-	go func() {
-		timer:=time.NewTicker(30*time.Second)
-		for{
-			<-timer.C
-		err:=matcher.RunReconciliation(context.Background())
-		if err!=nil{
-			log.Println("reconcile automate error:",err)
-		
-		}
-	}
-    }()
 
-     r.GET("/matches/pending-approval",matcher.ListPendngApprovals)
-	 r.POST("/matches/:id/approve",matcher.ApproveMatch)
-	 r.POST("/matches/approve-batch",matcher.ApproveBatch)
-	 r.POST("/matches/:id/reject",matcher.RejectMatch)
-	 r.GET("/reports/summary",matcher.ReconciliationSummary)
+	go func() {
+		timer := time.NewTicker(30 * time.Second)
+		for {
+			<-timer.C
+			err := matcher.RunReconciliation(context.Background())
+			if err != nil {
+				log.Println("reconcile automate error:", err)
+
+			}
+		}
+	}()
+
+	r.GET("/matches/pending-approval", matcher.ListPendngApprovals)
+	r.POST("/matches/:id/approve", matcher.ApproveMatch)
+	r.POST("/matches/approve-batch", matcher.ApproveBatch)
+	r.POST("/matches/:id/reject", matcher.RejectMatch)
+	r.GET("/reports/summary", matcher.ReconciliationSummary)
+
+
 	r.Run(":8080")
 
 }
