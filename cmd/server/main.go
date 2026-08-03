@@ -8,7 +8,9 @@ import (
 	"github.com/PushpendraXdev/advanced-payment-reconciliation/internal/db"
 	"github.com/PushpendraXdev/advanced-payment-reconciliation/internal/gateway"
 	"github.com/PushpendraXdev/advanced-payment-reconciliation/internal/matcher"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
 	"github.com/joho/godotenv"
 )
 
@@ -18,12 +20,17 @@ func main() {
 		log.Println("No .env file found, using system environment variables")
 	}
 	pool, err := db.NewPool()
+
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer pool.Close()
 	r := gin.Default()
-
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"http://localhost:5173"},
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders: []string{"Content-Type"},
+	}))
 	r.GET("/health", func(ctx *gin.Context) { ctx.JSON(200, "welcome to project") })
 	redisClient := db.NewRedisClient()
 	handler := &gateway.Handler{Pool: pool, Redis: redisClient}
@@ -50,7 +57,6 @@ func main() {
 	r.POST("/matches/approve-batch", matcher.ApproveBatch)
 	r.POST("/matches/:id/reject", matcher.RejectMatch)
 	r.GET("/reports/summary", matcher.ReconciliationSummary)
-
 
 	r.Run(":8080")
 

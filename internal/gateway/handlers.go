@@ -107,6 +107,4 @@ if err!=nil{
 h.Redis.Set(c.Request.Context(),"idempotence:"+gtr.PaymentID ,"1",24*time.Hour)
 c.JSON(201,gin.H{"id":newId,"message":"gateway transaction recorded"})
 
-
 }
-

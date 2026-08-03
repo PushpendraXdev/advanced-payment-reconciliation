@@ -1,0 +1,38 @@
+body {
+  background: #cc1313;
+  color: #000000;
+  font-family: sans-serif;
+  padding: 40px;
+}
+
+.dashboard h1 {
+  margin-bottom: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #f1eff1;
+}
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.badge.pending { background: #f11414; color: #fff; }
+.badge.matched { background: #0f9d58; color: #fff; }
+.badge.pending_approval { background: #090909; color: #fff; }
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #dfe3e7;
+}
+
+th {
+  background: #f1f1f3;
+}
+
+tr:hover {
+  background: #03f12350;
+}
