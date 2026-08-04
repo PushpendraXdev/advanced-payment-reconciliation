@@ -1,28 +1,52 @@
 body {
   background: #cc1313;
-  color: #000000;
+  color: #ffffff;
   font-family: sans-serif;
   padding: 40px;
 }
 
-.dashboard h1 {
+.dashboard h1,
+.pendingapproval h1 {
   margin-bottom: 20px;
+  color: #ffffff;
 }
 
+/* Summary cards */
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: #ffffff;
+  color: #000000;
+  padding: 16px 24px;
+  border-radius: 8px;
+  flex: 1;
+}
+
+.card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.card p {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* Tables */
 table {
   width: 100%;
   border-collapse: collapse;
   background: #f1eff1;
+  color: #000000;
+  margin-bottom: 32px;
 }
-.badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.badge.pending { background: #f11414; color: #fff; }
-.badge.matched { background: #0f9d58; color: #fff; }
-.badge.pending_approval { background: #090909; color: #fff; }
+
 th, td {
   padding: 12px;
   text-align: left;
@@ -34,5 +58,44 @@ th {
 }
 
 tr:hover {
-  background: #03f12350;
+  background: #f1cccc;
+}
+
+/* Status badges */
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.badge.pending { background: #a30f0f; }
+.badge.matched { background: #0f9d58; }
+.badge.pending_approval { background: #333333; }
+
+/* Buttons */
+button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-right: 8px;
+  font-size: 14px;
+  transition: opacity 0.2s;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+.pendingapproval button:first-child {
+  background: #0f9d58;
+  color: white;
+}
+
+.pendingapproval button:last-child {
+  background: #e94560;
+  color: white;
 }
