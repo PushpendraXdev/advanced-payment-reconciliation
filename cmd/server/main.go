@@ -51,7 +51,7 @@ func main() {
 			}
 		}
 	}()
-
+    
 	r.GET("/matches/pending-approval", matcher.ListPendngApprovals)
 	r.POST("/matches/:id/approve", matcher.ApproveMatch)
 	r.POST("/matches/approve-batch", matcher.ApproveBatch)

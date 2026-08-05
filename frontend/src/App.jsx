@@ -5,6 +5,13 @@ function App() {
   const [transaction, setTransaction] = useState([])
   const [pendingApproval, takePendingApproval] = useState([])
   const [summary, setSummary] = useState(null)
+
+   async function fetchData() {
+      const response = await fetch("http://localhost:8080/transactions")
+      const data = await response.json()
+      setTransaction(data || [])
+    }
+    
   async function fetchSummary() {
     const response = await fetch("http://localhost:8080/reports/summary")
     const data = await response.json()
@@ -20,20 +27,20 @@ function App() {
       method: "POST"
     })
     fetchPendingApproval()
+    fetchData()
+    fetchSummary()
   }
   async function HandleReject(matchId) {
     await fetch(`http://localhost:8080/matches/${matchId}/reject`, {
       method: "POST"
     })
     fetchPendingApproval()
+    fetchData()
+    fetchSummary()
   }
 
   useEffect(() => {
-    async function fetchData() {
-      const response = await fetch("http://localhost:8080/transactions")
-      const data = await response.json()
-      setTransaction(data || [])
-    }
+   
     fetchData()
     fetchPendingApproval()
     fetchSummary()

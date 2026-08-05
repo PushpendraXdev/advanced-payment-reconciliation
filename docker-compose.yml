@@ -3,6 +3,7 @@ services:
     image: redis:alpine
     ports:
       - "6379:6379"
+
   app:
     build: .
     ports:
@@ -13,7 +14,6 @@ services:
     depends_on:
       - db
       - redis
-
   db:
     image: postgres:16
     environment:
